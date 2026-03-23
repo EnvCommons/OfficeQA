@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# pytest
+.pytest_cache/
+
+# Data files (downloaded by prepare_data.py)
+bucket_data/
+officeqa_pro.csv
+officeqa_full.csv
+*.zip
