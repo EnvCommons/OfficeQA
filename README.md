@@ -55,11 +55,12 @@ Sparse, verifiable, binary reward (1.0 or 0.0). Scoring uses deterministic fuzzy
 | Tool | Description |
 |------|-------------|
 | `bash` | Execute shell commands — search documents, run Python, access the web |
-| `submit` | Submit final answer for scoring (single attempt) |
+
+Grading uses a hidden `@terminal` tool: when the agent is done, it replies with a plain message wrapping the final answer in `<FINAL_ANSWER>...</FINAL_ANSWER>` tags. The environment extracts the tagged answer (falling back to the whole reply if no tags) and scores it with fuzzy numeric/text matching against the reference.
 
 ## Time Horizon
 
-Multi-turn. Agents typically perform 10–50+ tool calls: searching documents, reading files, writing and executing Python scripts, and optionally querying external data sources before submitting.
+Multi-turn. Agents typically perform 10–50+ tool calls: searching documents, reading files, writing and executing Python scripts, and optionally querying external data sources before finishing with a plain-text reply.
 
 ## Environment Difficulty
 

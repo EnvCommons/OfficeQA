@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 from openreward import AsyncOpenReward, SandboxBucketConfig, SandboxSettings
-from openreward.environments import Environment, JSONObject, TextBlock, ToolOutput, tool
+from openreward.environments import Environment, JSONObject, TextBlock, ToolOutput, terminal, tool
 from pydantic import BaseModel
 
 from reward import extract_final_answer, score_answer
@@ -96,7 +96,6 @@ class OfficeQA(Environment):
         self.question: str = task_spec["question"]
         self.source_files: list[str] = task_spec.get("source_files", [])
         self.ground_truth: str = _answers[uid]
-        self.submitted = False
 
         # OpenReward API key for sandbox
         or_api_key = (
@@ -175,10 +174,12 @@ Use the `bash` tool to search, read, and analyze documents. You can:
 
 ## Submission
 
-When you have your final answer, submit it using the `submit` tool.
-Your answer should be precise — most answers are numerical.
-- Include units if specified in the question (e.g., "1608.80%")
-- For list answers, use bracket format: [value1, value2, ...]
+When you have your final answer, reply with an ordinary message (no tool call).
+Wrap the exact answer in `<FINAL_ANSWER>...</FINAL_ANSWER>` tags so the grader
+extracts it verbatim from your reply. Your answer should be precise — most
+answers are numerical.
+- Include units if specified in the question (e.g., `<FINAL_ANSWER>1608.80%</FINAL_ANSWER>`)
+- For list answers, use bracket format: `<FINAL_ANSWER>[value1, value2, ...]</FINAL_ANSWER>`
 - Be precise with decimal places as specified in the question"""
 
         return [TextBlock(text=prompt)]
@@ -199,19 +200,14 @@ Your answer should be precise — most answers are numerical.
             finished=False,
         )
 
+    @terminal
     @tool
     async def submit(self, params: SubmitParams) -> ToolOutput:
-        """Submit your final answer for scoring. This is a terminal action — you get one attempt."""
-        if self.submitted:
-            return ToolOutput(
-                blocks=[TextBlock(text="Already submitted. Only one submission is allowed.")],
-                metadata={"error": "already_submitted"},
-                reward=0.0,
-                finished=True,
-            )
+        """Grade the assistant's final message with fuzzy numeric/text matching.
 
-        self.submitted = True
-
+        Extracts the answer from <FINAL_ANSWER>...</FINAL_ANSWER> tags if present
+        (else uses the whole message) and scores it against the reference.
+        """
         # Extract from <FINAL_ANSWER> tags if present
         try:
             predicted = extract_final_answer(params.answer)
