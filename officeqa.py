@@ -74,6 +74,11 @@ _test_tasks.sort(key=lambda t: t["id"])
 
 # --- Pydantic parameter models ---
 
+# Reward for a submission made after the task has already been graded. Negative
+# so repeat submissions are actively discouraged, not merely left unscored.
+REPEAT_SUBMISSION_PENALTY = -0.1
+
+
 class BashParams(BaseModel, extra="forbid"):
     command: str
 
@@ -96,6 +101,13 @@ class OfficeQA(Environment):
         self.question: str = task_spec["question"]
         self.source_files: list[str] = task_spec.get("source_files", [])
         self.ground_truth: str = _answers[uid]
+
+        # Graded submissions this session. @terminal already hides this tool from
+        # the model, so the harness normally invokes it once at the end of the
+        # rollout -- but Environment._call_tool dispatches by name and does not
+        # exclude terminal tools, so a direct second call would re-grade and pay
+        # out again. Defence in depth.
+        self.submitted = 0
 
         # OpenReward API key for sandbox
         or_api_key = (
@@ -208,6 +220,16 @@ answers are numerical.
         Extracts the answer from <FINAL_ANSWER>...</FINAL_ANSWER> tags if present
         (else uses the whole message) and scores it against the reference.
         """
+        if self.submitted > 0:
+            return ToolOutput(
+                blocks=[TextBlock(text="An answer has already been submitted for this task. "
+                                       "This episode is over: it is not re-graded, and repeat "
+                                       "submissions are penalised (reward -0.1).")],
+                metadata={"already_submitted": True, "submission_count": self.submitted},
+                reward=REPEAT_SUBMISSION_PENALTY,
+                finished=True,
+            )
+
         # Extract from <FINAL_ANSWER> tags if present
         try:
             predicted = extract_final_answer(params.answer)
@@ -217,6 +239,8 @@ answers are numerical.
         reward = score_answer(self.ground_truth, predicted, tolerance=0.00)
 
         result_text = f"Your answer: {predicted}\nScore: {reward:.1f}"
+
+        self.submitted += 1
 
         return ToolOutput(
             blocks=[TextBlock(text=result_text)],
