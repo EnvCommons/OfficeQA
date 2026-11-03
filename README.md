@@ -21,16 +21,16 @@
 
 ## License
 
-- **Dataset** (question CSVs): [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
-- **Code** (reward.py): [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
-- **Treasury Bulletin documents**: U.S. Government public domain
+[MIT](https://opensource.org/licenses/MIT). Upstream components keep their own licences: the OfficeQA question CSVs are [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), `reward.py` is adapted from the upstream repo under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0), and the Treasury Bulletin documents are U.S. Government public domain.
 
 ## Tasks
 
+There are 246 tasks in the `train` split and 133 in `test`.
+
 | Split | Source CSV | Count | Description |
 |-------|-----------|-------|-------------|
-| `train` | `officeqa_full.csv` | ~246 | Full development set (easy + hard) |
-| `test` | `officeqa_pro.csv` | ~133 | Benchmark set (hard only) |
+| `train` | `officeqa_full.csv` | 246 | Full development set (easy + hard) |
+| `test` | `officeqa_pro.csv` | 133 | Benchmark set (hard only) |
 
 Each task contains a natural language question, difficulty rating, and pointers to relevant source documents.
 
@@ -44,9 +44,11 @@ Sparse, verifiable, binary reward (1.0 or 0.0). Scoring uses deterministic fuzzy
 - Text overlap checking for hybrid answers (e.g., "March 1977")
 - `<FINAL_ANSWER>` tag extraction
 
+The environment scores with tolerance 0 (exact numeric match after unit normalisation). A repeat submission after the answer was graded gets **-0.1**. No LLM grader is used.
+
 ## Data
 
-- **Corpus**: 696 transformed Treasury Bulletin text files (~200 MB) with Markdown-formatted tables
+- **Corpus**: 696 transformed Treasury Bulletin text files with Markdown-formatted tables
 - **Source**: [databricks/officeqa](https://github.com/databricks/officeqa) on GitHub
 - **Mount path**: `/home/ubuntu/documents/` in sandbox
 
@@ -54,17 +56,21 @@ Sparse, verifiable, binary reward (1.0 or 0.0). Scoring uses deterministic fuzzy
 
 | Tool | Description |
 |------|-------------|
-| `bash` | Execute shell commands — search documents, run Python, access the web |
+| `bash` | Execute shell commands: search documents, run Python, access the web |
 
 Grading uses a hidden `@terminal` tool: when the agent is done, it replies with a plain message wrapping the final answer in `<FINAL_ANSWER>...</FINAL_ANSWER>` tags. The environment extracts the tagged answer (falling back to the whole reply if no tags) and scores it with fuzzy numeric/text matching against the reference.
 
 ## Time Horizon
 
-Multi-turn. Agents typically perform 10–50+ tool calls: searching documents, reading files, writing and executing Python scripts, and optionally querying external data sources before finishing with a plain-text reply.
+Multi-turn. Agents search documents, read files, write and execute Python scripts, and optionally query external data sources before finishing with a plain-text reply.
 
 ## Environment Difficulty
 
-Frontier models achieve ~57% accuracy on the Pro (hard) set. Human performance is ~34–51% depending on setup. 62% of questions require analytical reasoning beyond basic arithmetic.
+In the OfficeQA Pro paper, frontier-model agents given the document corpus averaged 34.1% accuracy on the 133-question Pro set.
+
+## Other Environment Requirements
+
+There are no further environment requirements; OfficeQA needs no external secrets or API keys.
 
 ## Safety
 
